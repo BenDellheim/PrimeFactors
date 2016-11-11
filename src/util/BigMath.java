@@ -1,6 +1,7 @@
 package util;
 
 import java.math.BigInteger;
+import immutable.*;
 
 public class BigMath {
 
@@ -30,29 +31,43 @@ public class BigMath {
     }
     
     /**
-     * @requires BigInteger N. such that 2 <= N
-     * @requires BigInteger low, hi. such that 1 <= low <= hi
+     * @requires BigInteger n such that 2 <= n
+     * @requires BigInteger low, high such that 1 <= low <= high
      * @effects finds all prime BigIntegers x 
-     *  such that low <= x <= hi AND x divides N evenly.
+     *  such that low <= x <= high AND x divides N evenly.
      *  Repeated prime factors will be found multiple times.
+     *  Note that high need not be higher than sqrt(n), and will be set to sqrt(n) if so.
      */
-    public static BigInteger[] primesOf(BigInteger n){
-    	BigInteger low = BigInteger.ONE, high = sqrt(n);
-    	BigInteger[] result = new BigInteger[high.intValue()];
-    	int resultOffset = 0;
-    	if(n.intValue() < 2) return null;
-    	for( BigInteger x = low; x.compareTo(high) <= 0; x = x.add(new BigInteger("2")))
+    public static ImList<BigInteger> primesOf(BigInteger n, BigInteger low, BigInteger high){
+    	// Confirm all arguments are in the proper range
+    	if(low.compareTo(BigInteger.ONE) < 0) return null;    // If low<1 return null
+    	if(low.compareTo(high) > 0) return null;			  // If low>high return null
+    	if(n.compareTo(new BigInteger("2")) < 0) return null; // If n<2 return null
+    	if(high.compareTo(sqrt(n)) > 0) high = sqrt(n);       // If high > sqrt(n), high=sqrt(n)
+    	
+    	
+    	ImList<BigInteger> result = new EmptyImList<BigInteger>(); 
+    	for( BigInteger x = low; x.compareTo(high) <= 0; x = x.nextProbablePrime())
     	{
     		if(isPrime(x))
     		{
-    			// While x divides evenly into n, add x to result then divide out x.
+    			// While x divides evenly into n, add x to result. Then, divide out x.
     			while(n.mod(x) == BigInteger.ZERO)
     			{
-    				result[resultOffset] = x;
-    				resultOffset++;
+    				System.out.println("Found factor " + x);
+    				result = result.add(x);
     				n = n.divide(x);
     			}
+				if(n.equals(BigInteger.ONE)) break;
     		}
+    	}
+    	// If n still isn't 1 after all that and we covered the full range, n is a prime too.
+    	if(!n.equals(BigInteger.ONE)
+    	   && (low.compareTo(new BigInteger("2")) == 0)
+    	   && (high.compareTo(sqrt(n)) >= 0))
+    	{
+    		result = result.add(n);
+			System.out.println("Found factor " + n);
     	}
     	return result;
     }
