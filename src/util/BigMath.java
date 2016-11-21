@@ -54,7 +54,7 @@ public class BigMath {
     			// While x divides evenly into n, add x to result. Then, divide out x.
     			while(n.mod(x) == BigInteger.ZERO)
     			{
-    				System.out.println("Found factor " + x);
+    				System.out.println("found " + n + " " + x);
     				result = result.add(x);
     				n = n.divide(x);
     			}

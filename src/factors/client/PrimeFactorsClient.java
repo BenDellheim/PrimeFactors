@@ -32,17 +32,17 @@ public class PrimeFactorsClient {
      */
     public static void main(String[] args) {
     	// 1. Check for proper program arguments; return otherwise.
-    	ArrayList<String> portList = new ArrayList<String>();
+    	ArrayList<Integer> portList = new ArrayList<Integer>();
 		try
 		{
-			for(int i = 0; i < args.length; i++) portList.add(args[i]);
-			//System.out.println(portList.size() + " size, arguments are " + portList);
+			for(int i = 0; i < args.length; i++) portList.add(Integer.parseInt(args[i]));
 		}
 		catch(ArrayIndexOutOfBoundsException e)
 		{
 			System.out.println("Please use command-line arguments of the form localhost:4444 localhost:5555 localhost:6666");
 			return;
 		}
+		catch(Exception e){return;}
 		
 		// 2. Main loop. Read in number to factor.
 		System.out.print("Hello! ");
@@ -57,6 +57,7 @@ public class PrimeFactorsClient {
 				BigInteger n = new BigInteger(input);
 				
 				// 3. Split up the work for factoring n, depending on portList's length
+				
 				
 			} catch (NumberFormatException e) {
 				if(input.length() == 0) isRunning = false;

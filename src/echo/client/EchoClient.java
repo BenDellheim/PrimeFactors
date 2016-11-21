@@ -22,7 +22,6 @@ public class EchoClient {
 	    	else{
 	    		host = "localhost";
 	    	}
-	    	
 	    	Socket socket = new Socket(host, 4444);
 			BufferedReader in = new BufferedReader( new InputStreamReader(socket.getInputStream()));
 			PrintWriter out = new PrintWriter( new OutputStreamWriter( socket.getOutputStream()));
