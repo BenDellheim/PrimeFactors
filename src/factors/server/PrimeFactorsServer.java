@@ -74,7 +74,7 @@ public class PrimeFactorsServer {
 				{
 					// Evaluate message from Client. Should be in format "factor n low high"
 					String[] input = str.split(" ");
-				System.out.println("[" + input[0] + "]");
+//				System.out.println("[" + input[0] + "]");
 					if(input[0].matches("factor") && input.length == 4)
 					{
 						try

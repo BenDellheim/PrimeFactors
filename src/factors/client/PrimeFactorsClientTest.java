@@ -25,21 +25,22 @@ public class PrimeFactorsClientTest {
     	String input = "1289783";
     	BigInteger n = new BigInteger(input);
     	String host = "localhost";
-    	
 		// 3. Split up the work for factoring n
    		ArrayList<Socket> socketList     = new ArrayList<Socket>(portList.size());
    		ArrayList<BufferedReader> inList = new ArrayList<BufferedReader>(portList.size());
    		ArrayList<PrintWriter> outList   = new ArrayList<PrintWriter>(portList.size());
-       	try
+
+   		try
        	{
        		// Open sockets to the ports provided
        		for(int i = 0; i < portList.size(); i++)
        		{
-       			socketList.set(i, new Socket(host, portList.get(i)));
-       			inList.set(i, new BufferedReader( new InputStreamReader(socketList.get(i).getInputStream())));
-       			outList.set(i, new PrintWriter( new OutputStreamWriter( socketList.get(i).getOutputStream())));
+       			socketList.add(new Socket(host, portList.get(i)));
+       			inList.add(new BufferedReader( new InputStreamReader(socketList.get(i).getInputStream())));
+       			outList.add(new PrintWriter( new OutputStreamWriter( socketList.get(i).getOutputStream())));
 			}
-       		// Send ranges to our servers ^_^
+        	
+        	// Send ranges to our servers ^_^
        		// i.e. Divide [1, sqrt(n)] into 3: [1, sqrt(n)/3], [sqrt(n)/3+1, 2*sqrt(n)/3], [2*sqrt(n)/3+1, sqrt(n)]
        		// Start at 1 and count "size" times. Divide range into "size" ranges.
        		// x = 1
@@ -55,21 +56,25 @@ public class PrimeFactorsClientTest {
        		BigInteger q = BigMath.sqrt(n).divide(new BigInteger(size));
        		for(int i = 0; i < portList.size(); i++)
        		{
+       			System.out.println("factor " + n + " " + x + " " + x.add(q).subtract(one));
        			outList.get(i).println("factor " + n + " " + x + " " + x.add(q).subtract(one));
        			outList.get(i).flush();
        			x = x.add(q);
        		}
        		
        		// 4. Listen for "found factor"/"done" messages and aggregate them
-       		Boolean stillWaiting = true;
        		ImList<BigInteger> factors = new EmptyImList<BigInteger>();
-       		while(stillWaiting)
-       		{
+       		int portsOpen; 
+       		do
+       		{ // Test loop
+           		portsOpen = portList.size();
        			for(int i = 0; i < portList.size(); i++)
        			{
        				if(inList.get(i) != null) System.out.println(inList.get(i).readLine());
+       				else portsOpen--;
        			}
-       		}
+       		}while(portsOpen > 0);
+       		System.out.println("All ports closed?");
 /*       		
        		while(stillWaiting)
        		{
