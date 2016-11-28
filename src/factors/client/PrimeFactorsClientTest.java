@@ -3,6 +3,7 @@ package factors.client;
 import static org.junit.Assert.*;
 import java.io.*;
 import java.util.ArrayList;
+import java.util.Collections;
 import java.math.BigInteger;
 import java.net.Socket;
 
@@ -56,7 +57,7 @@ public class PrimeFactorsClientTest {
        		BigInteger q = BigMath.sqrt(n).divide(new BigInteger(size));
        		for(int i = 0; i < portList.size(); i++)
        		{
-       			System.out.println("factor " + n + " " + x + " " + x.add(q).subtract(one));
+       				System.out.println("factor " + n + " " + x + " " + x.add(q).subtract(one));
        			outList.get(i).println("factor " + n + " " + x + " " + x.add(q).subtract(one));
        			outList.get(i).flush();
        			x = x.add(q);
@@ -64,16 +65,23 @@ public class PrimeFactorsClientTest {
        		
        		// 4. Listen for "found factor"/"done" messages and aggregate them
        		ImList<BigInteger> factors = new EmptyImList<BigInteger>();
-       		int portsOpen; 
+   			ArrayList<String> inputs = new ArrayList<String>(portList.size());	
+       		ArrayList<Boolean> portsOpen = new ArrayList<Boolean>(portList.size());
+       		Collections.fill(portsOpen, Boolean.TRUE);
        		do
        		{ // Test loop
-           		portsOpen = portList.size();
        			for(int i = 0; i < portList.size(); i++)
        			{
-       				if(inList.get(i) != null) System.out.println(inList.get(i).readLine());
-       				else portsOpen--;
+       				if(portsOpen.get(i))
+       				{
+       					String in = inList.get(i).readLine();
+       					System.out.println(">>>" + in);
+       					if(in.contains("done")) portsOpen.set(i, Boolean.FALSE);
+       				}
        			}
-       		}while(portsOpen > 0);
+       		// Loop until all ports are closed (FALSE)
+       		}while(Collections.frequency(portsOpen, Boolean.FALSE) != portList.size());
+       		
        		System.out.println("All ports closed?");
 /*       		
        		while(stillWaiting)
@@ -102,9 +110,10 @@ public class PrimeFactorsClientTest {
        				}
        			}
        		}
-*/    	}catch(Exception e){System.out.println(e);}
+*/    	}catch(Exception e){System.out.println("Uh, what? " + e);}
     	finally
     	{
+    		System.out.println("TEST: Finally block");
     		for(int i = 0; i < portList.size(); i++)
     		{
     			if(inList.get(i) != null) inList.get(i).close();
@@ -112,6 +121,8 @@ public class PrimeFactorsClientTest {
     			if(socketList.get(i) != null) socketList.get(i).close();
     		}    		
     	}
+   		System.out.println("OMG teh bai");
+
 	}
 
 }
