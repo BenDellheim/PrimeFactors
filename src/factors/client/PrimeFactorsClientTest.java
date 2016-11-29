@@ -6,6 +6,10 @@ import java.util.ArrayList;
 import java.util.Collections;
 import java.math.BigInteger;
 import java.net.Socket;
+import java.nio.charset.StandardCharsets;
+import java.nio.file.Files;
+import java.nio.file.Paths;
+import java.nio.file.StandardOpenOption;
 
 import org.junit.Test;
 
@@ -73,9 +77,9 @@ public class PrimeFactorsClientTest {
        			for(int i = 0; i < portList.size(); i++)
        			{
        				if(portsOpen.get(i))
-       				{
+       				{		//******This is where I'm trying to log to a file. It's not even creating the file now though.
        					String in = inList.get(i).readLine();
-       					System.out.println(">>>" + in);
+       					Files.write(Paths.get("client-test-log.txt"),in.getBytes("utf-8"),StandardOpenOption.APPEND, StandardOpenOption.CREATE);
        					if(in.contains("done")) portsOpen.set(i, Boolean.FALSE);
        				}
        			}
@@ -111,7 +115,7 @@ public class PrimeFactorsClientTest {
        			}
        		}
 */    	}catch(Exception e){System.out.println("Uh, what? " + e);}
-    	finally
+/*    	finally
     	{
     		System.out.println("TEST: Finally block");
     		for(int i = 0; i < portList.size(); i++)
@@ -120,7 +124,7 @@ public class PrimeFactorsClientTest {
     			if(outList.get(i) != null) outList.get(i).close();
     			if(socketList.get(i) != null) socketList.get(i).close();
     		}    		
-    	}
+    	}*/
    		System.out.println("OMG teh bai");
 
 	}
