@@ -13,17 +13,19 @@ import util.BigMath;
  *  PrimeFactorsServer performs the "server-side" algorithm 
  *  for counting prime factors.
  *
- *  Your PrimeFactorsServer should take in a single Program Argument 
- *  indicating which port your Server will be listening on.
- *      ex. arg of "4444" will make your Server listen on 4444.
+ *  The PrimeFactorsServer takes a single Program Argument 
+ *  indicating which port the Server will be listening on.
+ *      ex. arg of "4444" will make the Server listen on 4444.
+ *  For multiple servers, PrimeFactorsServer needs to be ran multiple times
+ *  with different port numbers.
  *      
- *  Your server will only need to handle one client at a time.  If the 
- *  connected client disconnects, your server should go back to listening for
+ *  The server only needs to handle one client at a time.  If the 
+ *  connected client disconnects, it goes back to listening for
  *  future clients to connect to.
  *  
  *  The client messages that come in will indicate the value that is being
  *  factored and the range of values this server will be processing over.  
- *  Your server will take this in and message back all factors for our value.
+ *  This server will take this in and message back all factors for our value.
  */
 public class PrimeFactorsServer {
             

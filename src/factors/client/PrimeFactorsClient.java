@@ -18,18 +18,17 @@ import util.BigMath;
 /**
  *  PrimeFactorsClient class for PrimeFactorsServer.  
  *  
- *  Your PrimeFactorsClient class should take in Program arguments space-delimited
+ *  The PrimeFactorsClient class takes in Program arguments space-delimited
  *  indicating which PrimeFactorsServers it will connect to.
  *      ex. args of "localhost:4444 localhost:5555 localhost:6666"
  *          will connect the client to PrimeFactorsServers running on
  *          localhost:4444, localhost:5555, localhost:6666 
  *
- *  Your client should take user input from standard input.  The appropriate input
- *  that can be processed is a number.  If your input is not of the correct format,
- *  you should ignore it and continue to the next one.
+ *  The client takes user input from standard input. Only numbers are processed;
+ *  any other inputs are ignored with an "invalid" message.
  *  
- *  Your client should distribute to each server the appropriate range of values
- *  to look for prime factors through.
+ *  Afterwards, the client distributes the prime factor searches to the
+ *  PrimeFactorsServer ports provided, then waits for and compiles the results for the user.
  */
 public class PrimeFactorsClient {
     
@@ -46,7 +45,6 @@ public class PrimeFactorsClient {
 		try
 		{
 			for(int i = 0; i < args.length; i++) portList.add(Integer.parseInt(args[i].replaceAll("[^0-9]", "")));
-			
 		}
 		catch(IndexOutOfBoundsException e)
 		{
@@ -55,8 +53,25 @@ public class PrimeFactorsClient {
 		}
 		catch(Exception e){return;}
 		
-		// 2. Main loop. Read in number to factor.
-		respond("Hello! ");
+		// Lists for factoring n and communicating with the servers
+	   	ArrayList<Socket> socketList     = new ArrayList<Socket>(portList.size());
+	   	ArrayList<BufferedReader> inList = new ArrayList<BufferedReader>(portList.size());
+	   	ArrayList<PrintWriter> outList   = new ArrayList<PrintWriter>(portList.size());
+
+	   	try
+	    {
+	      	// 2. Open sockets to the ports provided
+	       	for(int i = 0; i < portList.size(); i++)
+	       	{
+	       		socketList.add(new Socket(host, portList.get(i)));
+	       		inList.add(new BufferedReader( new InputStreamReader(socketList.get(i).getInputStream())));
+	       		outList.add(new PrintWriter( new OutputStreamWriter( socketList.get(i).getOutputStream())));
+			}
+	    }	catch(Exception e){respond("unknown host");}
+   	
+	       	
+		// 3. Main loop. Read in number to factor.
+		respond("Hello!");
 		BufferedReader reader = new BufferedReader(new InputStreamReader(System.in));
 		boolean isRunning = true;
 		while(isRunning)
@@ -74,22 +89,10 @@ public class PrimeFactorsClient {
 				continue;
 			} catch(IOException e){e.printStackTrace(); break;}
 				
-			// 3. Split up the work for factoring n, depending on portList's length
-		   	ArrayList<Socket> socketList     = new ArrayList<Socket>(portList.size());
-		   	ArrayList<BufferedReader> inList = new ArrayList<BufferedReader>(portList.size());
-		   	ArrayList<PrintWriter> outList   = new ArrayList<PrintWriter>(portList.size());
 
-		   	try
-		    {
-		      	// Open sockets to the ports provided
-		       	for(int i = 0; i < portList.size(); i++)
-		       	{
-		       		socketList.add(new Socket(host, portList.get(i)));
-		       		inList.add(new BufferedReader( new InputStreamReader(socketList.get(i).getInputStream())));
-		       		outList.add(new PrintWriter( new OutputStreamWriter( socketList.get(i).getOutputStream())));
-				}
-		        	
-		        // Send ranges to our servers ^_^
+			try
+			{
+				// 4. Split up the work for factoring n, depending on portList's length
 		       	// Each range is from [x, x+q-1] where
 		       	//  q = sqrt(n)/#servers
 		       	//  x = 1 then x += q for subsequent ranges
@@ -106,10 +109,10 @@ public class PrimeFactorsClient {
 		       		x = x.add(q);
 		       	}
 		       		
-		       	// 4. Listen for "found factor"/"done" messages and aggregate them
+		       	// 5. Listen for "found factor"/"done" messages and aggregate them
 		       	ImList<BigInteger> factors = new EmptyImList<BigInteger>();			//Holds factors returned from PrimeFactorsServer
 		       	ArrayList<Boolean> portsOpen = new ArrayList<Boolean>();			//.get(i) TRUE -> port i open
-		       	for(int i = 0; i < portList.size(); i++)portsOpen.add(Boolean.TRUE);
+		       	for(int i = 0; i < portList.size(); i++)portsOpen.add(Boolean.TRUE);//All ports initialized to TRUE (open)
 
 		       	do
 		       	{
@@ -131,12 +134,12 @@ public class PrimeFactorsClient {
 		       				{	// "done n low hi" -> mark port as closed
 		          					portsOpen.set(i, Boolean.FALSE);
 		       				}
-		       				// Ignore any other messages
+		       				// Ignore any other messages; the servers aren't listening for feedback
 		       			}
 		       		}
 				}while(Collections.frequency(portsOpen, Boolean.FALSE) != portList.size());
 		       		
-		       	// 5. Confirm factors and display answer to user
+		       	// 6. Confirm factors and display answer to user
 		       	factors = BigMath.getVerifiedPrimes(factors, n);
 		       	if(BigMath.isValidPrimeList(factors))
 		       	{
@@ -152,17 +155,19 @@ public class PrimeFactorsClient {
 		       	{
 		       		respond("invalid");
 		       	}
-		    }catch(Exception e){respond("invalid");}
-		    finally
-		    {
+		    }catch(Exception e)
+			{
+		    	respond("invalid");
 		    	for(int i = 0; i < portList.size(); i++)
 		    	{
 		    		if(inList.get(i) != null) inList.get(i).close();
 		    		if(outList.get(i) != null) outList.get(i).close();
 		    		if(socketList.get(i) != null) socketList.get(i).close();
-		    	}    		
-		    }				
-		}// End while
+		    	}
+		    }
+			
+		}// End while( isRunning)
+		return;
     }// End main
 
     /**
