@@ -1,6 +1,8 @@
 package util;
 
 import java.math.BigInteger;
+import java.util.Iterator;
+
 import immutable.*;
 
 public class BigMath {
@@ -72,8 +74,13 @@ public class BigMath {
     	return result;
     }
     
-    // Code thanks to a thread on CodeReview:
-    // http://codereview.stackexchange.com/questions/43490/biginteger-prime-testing/
+    /**
+     * @effects Returns true if prime, false if not prime.
+     * The value in the first line, isProbablePrime(10), can be edited for improved accuracy
+     * (increase 10 to something else) at the cost of significant overhead.
+     * Code thanks to a thread on CodeReview:
+     * http://codereview.stackexchange.com/questions/43490/biginteger-prime-testing/
+     */
     public static Boolean isPrime(BigInteger n){
     	if(!n.isProbablePrime(10)) return false;
     	if(n.compareTo(BigInteger.ONE) == 0 || (n.compareTo(new BigInteger("2")) == 0)) return true;
@@ -85,4 +92,43 @@ public class BigMath {
     	}
     	return true;
     }
+
+    /**
+     * @requires ImList<BigInteger> primes, the output of one or more primesOf() calls
+     * @requires BigInteger n, the same number called with primesOf()
+     * @effects Verifies the product of primes = n. At most one prime can be > sqrt(n),
+	 * so this ensures a missing factor is prime and adds it to the list. 
+	 * @returns Full list of prime factors for n, or a list containing 0 if something's wrong.
+     */
+	public static ImList<BigInteger> getVerifiedPrimes( ImList<BigInteger> primes, BigInteger n)
+	{
+		BigInteger p = BigInteger.ONE;
+		Iterator<BigInteger> it = primes.iterator();
+		while( it.hasNext() )
+		{
+			p = it.next().multiply(p);
+		}
+		// If factors multiply up to n, we're golden. Return the list with no change.
+		if( p.compareTo(n) == 0) return primes;
+
+		// If factors multiply to MORE than n, or if p ISN'T divisible by n, somebody goofed. Return an error value.
+		if( p.compareTo(n) > 0 || n.mod(p).compareTo(BigInteger.ZERO) != 0) return new NonEmptyImList<BigInteger>(BigInteger.ZERO);
+		
+		// Otherwise, the product is <n and we're just missing a factor.
+		BigInteger x = n.divide(p);
+		if( x.isProbablePrime(10) && x.multiply(p).compareTo(n) == 0)return primes.add(x);
+		else
+			// If n/p isn't prime or x*p isn't n, somebody goofed. Return an error value.
+			return new NonEmptyImList<BigInteger>(BigInteger.ZERO);
+	}
+	
+    /**
+     * @requires ImList<BigInteger> primes, the output of getVerifiedPrimes
+     * @returns false if primes contains ZERO (the error value of getVerifiedPrimes),
+     * or if primes is a list of size 0.
+     */
+	public static Boolean isValidPrimeList( ImList<BigInteger> primes)
+	{
+		return !primes.contains(BigInteger.ZERO) || primes.size() == 0;
+	}
 }

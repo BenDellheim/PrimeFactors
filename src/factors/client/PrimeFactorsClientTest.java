@@ -4,6 +4,7 @@ import static org.junit.Assert.*;
 import java.io.*;
 import java.util.ArrayList;
 import java.util.Collections;
+import java.util.Iterator;
 import java.math.BigInteger;
 import java.net.Socket;
 import java.nio.charset.StandardCharsets;
@@ -27,7 +28,7 @@ public class PrimeFactorsClientTest {
     	portList.add(4444);
     	portList.add(5555);
     	portList.add(6666);
-    	String input = "1289783";
+    	String input = "18306";
     	BigInteger n = new BigInteger(input);
     	String host = "localhost";
 		// 3. Split up the work for factoring n
@@ -46,87 +47,96 @@ public class PrimeFactorsClientTest {
 			}
         	
         	// Send ranges to our servers ^_^
-       		// i.e. Divide [1, sqrt(n)] into 3: [1, sqrt(n)/3], [sqrt(n)/3+1, 2*sqrt(n)/3], [2*sqrt(n)/3+1, sqrt(n)]
-       		// Start at 1 and count "size" times. Divide range into "size" ranges.
-       		// x = 1
-       		// q = sqrt(n)/size
-       		// 1st range: [x, x+q-1] (1, q)
-       		// x = x+q (1+q)
-       		// 2nd range: [x, x+q-1] (q+1, 2q)
-       		// x = x+q
-       		// 3rd range: [x, x+q-1] (2q+1, 3q)
+       		// Each range is from [x, x+q-1] where
+       		//  q = sqrt(n)/#servers
+       		//  x = 1 then x += q for subsequent ranges
+       		// i.e. for 3 servers we have the ranges [1, q], [q+1, 2q], [2q+1, 3q]
+       		// (Pretty neat, huh?)
        		String size = Integer.toString(portList.size());
        		BigInteger one = BigInteger.ONE;
        		BigInteger x = one;
        		BigInteger q = BigMath.sqrt(n).divide(new BigInteger(size));
        		for(int i = 0; i < portList.size(); i++)
        		{
-       				System.out.println("factor " + n + " " + x + " " + x.add(q).subtract(one));
        			outList.get(i).println("factor " + n + " " + x + " " + x.add(q).subtract(one));
        			outList.get(i).flush();
        			x = x.add(q);
        		}
        		
        		// 4. Listen for "found factor"/"done" messages and aggregate them
-       		ImList<BigInteger> factors = new EmptyImList<BigInteger>();
-   			ArrayList<String> inputs = new ArrayList<String>(portList.size());	
-       		ArrayList<Boolean> portsOpen = new ArrayList<Boolean>(portList.size());
-       		Collections.fill(portsOpen, Boolean.TRUE);
+       		ImList<BigInteger> factors = new EmptyImList<BigInteger>();			//Holds factors returned from PrimeFactorsServer
+       		ArrayList<Boolean> portsOpen = new ArrayList<Boolean>();			//.get(i) TRUE -> port i open
+       		for(int i = 0; i < portList.size(); i++)portsOpen.add(Boolean.TRUE);
+
+/*       		Files.write(Paths.get("client-test-log.txt"),"open \n".getBytes("utf-8"),StandardOpenOption.CREATE, StandardOpenOption.TRUNCATE_EXISTING);
        		do
        		{ // Test loop
        			for(int i = 0; i < portList.size(); i++)
        			{
        				if(portsOpen.get(i))
-       				{		//******This is where I'm trying to log to a file. It's not even creating the file now though.
-       					String in = inList.get(i).readLine();
-       					Files.write(Paths.get("client-test-log.txt"),in.getBytes("utf-8"),StandardOpenOption.APPEND, StandardOpenOption.CREATE);
+       				{
+       					String in = inList.get(i).readLine() + "\n";
+       					Files.write(Paths.get("client-test-log.txt"),in.getBytes("utf-8"),StandardOpenOption.APPEND);
        					if(in.contains("done")) portsOpen.set(i, Boolean.FALSE);
        				}
        			}
        		// Loop until all ports are closed (FALSE)
        		}while(Collections.frequency(portsOpen, Boolean.FALSE) != portList.size());
-       		
-       		System.out.println("All ports closed?");
-/*       		
-       		while(stillWaiting)
+       		Files.write(Paths.get("client-test-log.txt"),"All ports closed.\n".getBytes("utf-8"),StandardOpenOption.APPEND);
+*/       		
+       		do
        		{
-       			ArrayList<String> inputs = new ArrayList<String>(portList.size());	
        			for(int i = 0; i < portList.size(); i++)
        			{
-       				if(inList.get(i) != null)
+       				if(portsOpen.get(i))
        				{
-       					inputs.set(i, inList.get(i).readLine());
        					// Parse the received input
-       					String[] line = inputs.get(i).split(" ");
+       					String[] line = inList.get(i).readLine().split(" ");
        					if(line.length == 3 &&
        					   line[0].matches("found") && 
        					   n.equals(new BigInteger(line[1])))
-       					{
+       					{	// "found n factor" -> add factor to list
        						factors = factors.add(new BigInteger(line[2]));
        					}
        					else if(line.length == 4 &&
        							line[0].matches("done") &&
        							n.equals(new BigInteger(line[1])))
-       					{
-       						
+       					{	// "done n low hi" -> mark port as closed
+           					portsOpen.set(i, Boolean.FALSE);
        					}
-
+       					// Ignore any other messages
        				}
        			}
+		}while(Collections.frequency(portsOpen, Boolean.FALSE) != portList.size());
+       		
+       	// 5. Confirm factors and display answer to user
+       	factors = BigMath.getVerifiedPrimes(factors, n);
+       	if(BigMath.isValidPrimeList(factors))
+       	{
+       		Iterator<BigInteger> it = factors.iterator();
+       		System.out.print(">>> " + n + "=" + it.next());
+       		for(; it.hasNext();)
+       		{
+       			System.out.print("*" + it.next());
        		}
-*/    	}catch(Exception e){System.out.println("Uh, what? " + e);}
-/*    	finally
+       		System.out.print("\n");
+       	}
+       	else
+       	{
+       		System.out.println(">>> invalid");
+       	}
+       	
+       	}catch(Exception e){System.err.println("Uh, what? " + e);}
+    	finally
     	{
-    		System.out.println("TEST: Finally block");
+//    		System.err.println("TEST: Finally block");
     		for(int i = 0; i < portList.size(); i++)
     		{
     			if(inList.get(i) != null) inList.get(i).close();
     			if(outList.get(i) != null) outList.get(i).close();
     			if(socketList.get(i) != null) socketList.get(i).close();
     		}    		
-    	}*/
-   		System.out.println("OMG teh bai");
-
+    	}
 	}
 
 }

@@ -48,7 +48,7 @@ public class PrimeFactorsServer {
 		{
 			s = new ServerSocket(portNumber);
 		}
-		catch(Exception e){System.out.println( e + " Failed to listen on the assigned port. Oopsy!"); isStopped = true;}
+		catch(Exception e){System.err.println( e + " Failed to listen on the assigned port. Oopsy!"); isStopped = true;}
 
 		while( !isStopped){
 		// Open a new connection with the client
@@ -57,9 +57,6 @@ public class PrimeFactorsServer {
 			PrintWriter out = new PrintWriter( new OutputStreamWriter( incoming.getOutputStream())); )
 		{
 			isStopped = false;
-//			out.println("Hello! ....");;
-//			out.println("Enter BYE to exit.");
-//			out.flush();
 			
 			while (!isStopped)
 			{
@@ -74,7 +71,6 @@ public class PrimeFactorsServer {
 				{
 					// Evaluate message from Client. Should be in format "factor n low high"
 					String[] input = str.split(" ");
-//				System.out.println("[" + input[0] + "]");
 					if(input[0].matches("factor") && input.length == 4)
 					{
 						try
@@ -100,7 +96,8 @@ public class PrimeFactorsServer {
 				}
 			}
 			incoming.close();
-		}catch(Exception e){System.out.println(e); isStopped = true;}
+		}catch(SocketException e){isStopped = true;}
+		catch(Exception e){System.out.println(e); isStopped = true;}
 	}// End while( !isStopped )
 		
 	// isStopped is true; close the ServerSocket
