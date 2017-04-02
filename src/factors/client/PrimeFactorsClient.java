@@ -17,18 +17,22 @@ import util.BigMath;
 
 /**
  *  PrimeFactorsClient class for PrimeFactorsServer.  
+ *  The model for this is "one client, many servers."
  *  
- *  The PrimeFactorsClient class takes in Program arguments space-delimited
+ *  The [PrimeFactors]Client class must take in command-line arguments
  *  indicating which PrimeFactorsServers it will connect to.
  *      ex. args of "localhost:4444 localhost:5555 localhost:6666"
  *          will connect the client to PrimeFactorsServers running on
  *          localhost:4444, localhost:5555, localhost:6666 
+ *  (Incidentally, before running Client you'll need to first run the Server
+ *  once for each port; see PrimeFactorsServer.java for details.)
  *
- *  The client takes user input from standard input. Only numbers are processed;
- *  any other inputs are ignored with an "invalid" message.
+ *  The Client takes user input from standard input.  The appropriate input
+ *  that can be processed is a number.  If your input is not of the correct format,
+ *  it's ignored and the Client will request another input.
  *  
- *  Afterwards, the client distributes the prime factor searches to the
- *  PrimeFactorsServer ports provided, then waits for and compiles the results for the user.
+ *  The Client then distributes to each server the appropriate range of values
+ *  to search for prime factors, then listens for their answers and aggregates them.
  */
 public class PrimeFactorsClient {
     
@@ -44,34 +48,37 @@ public class PrimeFactorsClient {
     	String host = "localhost";
 		try
 		{
-			for(int i = 0; i < args.length; i++) portList.add(Integer.parseInt(args[i].replaceAll("[^0-9]", "")));
+			if( args.length == 0) throw new Exception();
+			for(int i = 0; i < args.length; i++)
+				portList.add(Integer.parseInt(args[i].replaceAll("[^0-9]", "")));
 		}
-		catch(IndexOutOfBoundsException e)
+		catch(Exception e)
 		{
-			respond("Please use command-line arguments of the form localhost:4444 localhost:5555 localhost:6666");
+			respond("Please use command-line arguments of the form " +
+					"\"localhost:4444 localhost:5555 localhost:6666\",\n" +
+					"    where 4444, 5555, and 6666 are the ports to connect to.");
 			return;
 		}
-		catch(Exception e){return;}
 		
-		// Lists for factoring n and communicating with the servers
+		// 2. Create lists for factoring n, depending on portList's length
 	   	ArrayList<Socket> socketList     = new ArrayList<Socket>(portList.size());
 	   	ArrayList<BufferedReader> inList = new ArrayList<BufferedReader>(portList.size());
 	   	ArrayList<PrintWriter> outList   = new ArrayList<PrintWriter>(portList.size());
 
 	   	try
 	    {
-	      	// 2. Open sockets to the ports provided
+	      	// Open sockets to the ports provided
 	       	for(int i = 0; i < portList.size(); i++)
 	       	{
 	       		socketList.add(new Socket(host, portList.get(i)));
 	       		inList.add(new BufferedReader( new InputStreamReader(socketList.get(i).getInputStream())));
 	       		outList.add(new PrintWriter( new OutputStreamWriter( socketList.get(i).getOutputStream())));
 			}
-	    }	catch(Exception e){respond("unknown host");}
+	    }	catch(Exception e){respond("Connection failed! Please make sure the Servers are already running on the ports requested."); return;}
    	
 	       	
 		// 3. Main loop. Read in number to factor.
-		respond("Hello!");
+		respond("Hello! ");
 		BufferedReader reader = new BufferedReader(new InputStreamReader(System.in));
 		boolean isRunning = true;
 		while(isRunning)
@@ -83,25 +90,40 @@ public class PrimeFactorsClient {
 			{
 				input = reader.readLine().trim();
 				n = new BigInteger(input);
+				if (n.compareTo(new BigInteger("2")) < 0)
+				{ // input must be 2+
+					respond("invalid");
+					continue;
+				}
+				if( BigMath.sqrt(n).compareTo(new BigInteger(String.valueOf(portList.size()))) < 0)
+				{ // sqrt(n) can't be less than the number of servers
+					respond("invalid");
+					continue;
+				}
 			} catch (NumberFormatException e) {
-				if(input.length() == 0) isRunning = false;
+				if(input.length() == 0) isRunning = false; // If they hit Enter for a blank line, break from the main loop
 				else respond("invalid");
 				continue;
 			} catch(IOException e){e.printStackTrace(); break;}
 				
+			// 3. Split up the work for factoring n, depending on portList's length
 
-			try
-			{
-				// 4. Split up the work for factoring n, depending on portList's length
+	        	
+		        // Send ranges to our servers ^_^
 		       	// Each range is from [x, x+q-1] where
-		       	//  q = sqrt(n)/#servers
-		       	//  x = 1 then x += q for subsequent ranges
+		       	//  q == sqrt(n)/#servers						(i.e. n==144 and 3 servers means q==12/3 or 4)
+		       	//  x == 1 then x += q for subsequent ranges	(i.e. n==144 and 3 servers means [1, 4], [5, 8], [9, 12])
 		       	// i.e. for 3 servers we have the ranges [1, q], [q+1, 2q], [2q+1, 3q]
 		       	// (Pretty neat, huh?)
+			try
+			{
 		       	String size = Integer.toString(portList.size());
 		       	BigInteger one = BigInteger.ONE;
 		       	BigInteger x = one;
 		       	BigInteger q = BigMath.sqrt(n).divide(new BigInteger(size));
+		       	if (q == BigInteger.ZERO) {
+		       		q = one;
+		       	}
 		       	for(int i = 0; i < portList.size(); i++)
 		       	{
 		       		outList.get(i).println("factor " + n + " " + x + " " + x.add(q).subtract(one));
@@ -109,10 +131,10 @@ public class PrimeFactorsClient {
 		       		x = x.add(q);
 		       	}
 		       		
-		       	// 5. Listen for "found factor"/"done" messages and aggregate them
+		       	// 4. Listen for "found factor"/"done" messages and aggregate them
 		       	ImList<BigInteger> factors = new EmptyImList<BigInteger>();			//Holds factors returned from PrimeFactorsServer
 		       	ArrayList<Boolean> portsOpen = new ArrayList<Boolean>();			//.get(i) TRUE -> port i open
-		       	for(int i = 0; i < portList.size(); i++)portsOpen.add(Boolean.TRUE);//All ports initialized to TRUE (open)
+		       	for(int i = 0; i < portList.size(); i++)portsOpen.add(Boolean.TRUE);
 
 		       	do
 		       	{
@@ -134,17 +156,20 @@ public class PrimeFactorsClient {
 		       				{	// "done n low hi" -> mark port as closed
 		          					portsOpen.set(i, Boolean.FALSE);
 		       				}
-		       				// Ignore any other messages; the servers aren't listening for feedback
+		       				// Ignore any other messages
 		       			}
 		       		}
 				}while(Collections.frequency(portsOpen, Boolean.FALSE) != portList.size());
 		       		
-		       	// 6. Confirm factors and display answer to user
+		       	// 5. Confirm factors and display answer to user
 		       	factors = BigMath.getVerifiedPrimes(factors, n);
 		       	if(BigMath.isValidPrimeList(factors))
 		       	{
 		       		Iterator<BigInteger> it = factors.iterator();
 		       		String response = n + "=" + it.next();
+		       		if(factors.size() == 1) { // only one factor
+		       			response += "*1";
+		       		}
 		       		while( it.hasNext())
 		       		{
 		       			response += "*" + it.next();
@@ -155,9 +180,7 @@ public class PrimeFactorsClient {
 		       	{
 		       		respond("invalid");
 		       	}
-		    }catch(Exception e)
-			{
-		    	respond("invalid");
+		    }catch(Exception e){respond("invalid");
 		    	for(int i = 0; i < portList.size(); i++)
 		    	{
 		    		if(inList.get(i) != null) inList.get(i).close();
@@ -166,7 +189,7 @@ public class PrimeFactorsClient {
 		    	}
 		    }
 			
-		}// End while( isRunning)
+		}// End while
 		return;
     }// End main
 
