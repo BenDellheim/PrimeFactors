@@ -106,7 +106,7 @@ public class PrimeFactorsClient {
 				continue;
 			} catch(IOException e){e.printStackTrace(); break;}
 				
-			// 3. Split up the work for factoring n, depending on portList's length
+			// 4. Split up the work for factoring n, depending on portList's length
 
 	        	
 		        // Send ranges to our servers ^_^
@@ -131,7 +131,7 @@ public class PrimeFactorsClient {
 		       		x = x.add(q);
 		       	}
 		       		
-		       	// 4. Listen for "found factor"/"done" messages and aggregate them
+		       	// 5. Listen for "found factor"/"done" messages and aggregate them
 		       	ImList<BigInteger> factors = new EmptyImList<BigInteger>();			//Holds factors returned from PrimeFactorsServer
 		       	ArrayList<Boolean> portsOpen = new ArrayList<Boolean>();			//.get(i) TRUE -> port i open
 		       	for(int i = 0; i < portList.size(); i++)portsOpen.add(Boolean.TRUE);
@@ -161,7 +161,7 @@ public class PrimeFactorsClient {
 		       		}
 				}while(Collections.frequency(portsOpen, Boolean.FALSE) != portList.size());
 		       		
-		       	// 5. Confirm factors and display answer to user
+		       	// 6. Confirm factors and display answer to user
 		       	factors = BigMath.getVerifiedPrimes(factors, n);
 		       	if(BigMath.isValidPrimeList(factors))
 		       	{
